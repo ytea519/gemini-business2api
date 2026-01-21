@@ -156,15 +156,6 @@ class LoginService(BaseTaskService[LoginTask]):
         browser_engine = (config.basic.browser_engine or "dp").lower()
         headless = config.basic.browser_headless
 
-        # Linux 环境强制使用 DP 无头模式（无图形界面无法运行有头模式）
-        import sys
-        is_linux = sys.platform.startswith("linux")
-        if is_linux:
-            if browser_engine != "dp" or not headless:
-                log_cb("warning", "Linux environment: forcing DP engine with headless mode")
-                browser_engine = "dp"
-                headless = True
-
         if browser_engine == "dp":
             # DrissionPage 引擎：支持有头和无头模式
             automation = GeminiAutomation(
@@ -174,7 +165,10 @@ class LoginService(BaseTaskService[LoginTask]):
                 log_callback=log_cb,
             )
         else:
-            # undetected-chromedriver 引擎：仅有头模式可用
+            # undetected-chromedriver 引擎：无头模式反检测能力弱，强制使用有头模式
+            if headless:
+                log_cb("warning", "UC engine: headless mode not recommended, forcing headed mode")
+                headless = False
             automation = GeminiAutomationUC(
                 user_agent=self.user_agent,
                 proxy=config.basic.proxy,
